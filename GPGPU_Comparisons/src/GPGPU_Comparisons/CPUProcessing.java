@@ -109,7 +109,7 @@ public class CPUProcessing {
 			retval[i] ^= key;
 		}
 		
-		return retval.toString();
+		return new String(retval);
 	}
 	
 	public static String decrypt(String data, int key) {

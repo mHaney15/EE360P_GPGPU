@@ -1,3 +1,5 @@
-kernel void sampleKernel( global char* param )
+kernel void sampleKernel( global char* EncStrng, global char* DecStrng, int Key)
 {
+	unsigned int xid = get_global_id(0);
+	DecStrng[xid] = EncStrng[xid]^Key;
 }
