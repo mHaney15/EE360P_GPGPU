@@ -1,4 +1,4 @@
-kernel void Vec_Add(global const int* a, global const int* b, global int* answer, global int n) {
+kernel void Vec_Add(global const double* a, global const double* b, global int* answer, global int n) {
   unsigned int xid = get_global_id(0);
   if(xid < n){
 	  answer[xid] = a[xid] + b[xid];
