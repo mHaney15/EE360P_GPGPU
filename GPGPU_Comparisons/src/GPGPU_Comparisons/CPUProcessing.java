@@ -4,8 +4,8 @@ import java.util.Arrays;
 
 public class CPUProcessing {
 	/* Assumes a and b are vectors/arrays with the same length. */
-	public static int[] vectorAddition(int[] a, int[] b) {
-		int[] retval = new int[a.length];
+	public static double[] vectorAddition(double[] a, double[] b) {
+		double[] retval = new double[a.length];
 		for(int i = 0; i < a.length; i += 1) {
 			retval[i] = a[i] + b[i];
 		}
@@ -128,9 +128,9 @@ public class CPUProcessing {
 	public static void main(String[] args) {
 		System.out.println("Testing CPU processing methods.");
 		
-		int[] inputA = {1,2,3,4,5};
-		int[] inputB = {1,2,3,4,5};
-		int[] output = vectorAddition(inputA, inputB);
+		double[] inputA = {1,2,3,4,5};
+		double[] inputB = {1,2,3,4,5};
+		double[] output = vectorAddition(inputA, inputB);
 		
 		System.out.println(Arrays.toString(inputA) + " * 2 = " + Arrays.toString(output));
 		

@@ -7,8 +7,8 @@
 kernel void matrixMul(global double* answer, global double* A, global double* B, int wA, int wB)
 {
 
-   double i = get_global_id(0);
-   double j = get_global_id(1);
+   unsigned int i = get_global_id(0);
+   unsigned int j = get_global_id(1);
 
    // value stores the element that is
    // computed by the thread
