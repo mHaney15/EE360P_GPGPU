@@ -4,7 +4,8 @@
  */
 
 // OpenCL Kernel
-kernel void matrixMul(global double* answer, global double* A, global double* B, int wA, int wB)
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
+kernel void Mat_Mult(global const double* a, global const double* b, global double* answer, int n)
 {
 
    unsigned int i = get_global_id(0);
@@ -12,19 +13,18 @@ kernel void matrixMul(global double* answer, global double* A, global double* B,
 
    // value stores the element that is
    // computed by the thread
-   if((i < wA)&&(j < wB)){
-	   double value = 0;
-	   for (int k = 0; k < wA; k++)
+
+	   double value = n;
+	   for (int k = 0; k < n; k++)
 	   {
-		  double elementA = A[i * wA + k];
-		  double elementB = B[k * wB + j];
+		  double elementA = a[(i*n) + k];
+		  double elementB = b[(k*n) + j];
 		  value += elementA * elementB;
 	   }
 
 	   // Write the matrix to device memory each
 	   // thread writes one element
-	   C[i * wA + j] = value;
-	}
+	   answer[(i*n) + j] = value;
 }
 
 // based off code found at http://www.es.ele.tue.nl/~mwijtvliet/5KK73/?page=mmopencl

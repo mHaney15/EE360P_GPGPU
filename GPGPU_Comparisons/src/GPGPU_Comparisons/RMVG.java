@@ -18,7 +18,7 @@ public class RMVG {
 		double[][] randomMatrix = new double[size][size];
 		for(int i = 0; i < size; i++){
 			for(int j = 0; j < size; j++){
-				randomMatrix[i][j] = RNG.nextDouble()*(Double.MAX_VALUE/size);
+				randomMatrix[i][j] = RNG.nextDouble()*(Math.sqrt(Double.MAX_VALUE)/(size));
 			}
 		}
 		return randomMatrix;
@@ -40,15 +40,26 @@ public class RMVG {
 		return D_Matrix;
 	}
 	
-	public static boolean CompareResults(double[] a1, double[] a2){
+	public static boolean ResultsEqual(double[] a1, double[] a2){
 		if(a1.length != a2.length){return false;}
 		for(int i = 0; i < a1.length; i++){
 			if(a1[i] != a2[i]){
-				System.out.println("Element number "+i+" in the arrays differed by "+Math.abs(a1[i]-a2[i])+"!");
+				System.out.println("Element number "+i+" in the results differed by "+Math.abs(a1[i]-a2[i])+"!");
 				return false;
 			}
 		}
 		return true;
 	}
 
+	public static boolean ResultsEqual(double[][] m1, double[][] m2){
+		if(m1.length != m2.length){return false;}
+		if(m1[0].length != m2[0].length){return false;}
+		for(int i = 0; i < m1.length; i++){
+			if(!ResultsEqual(m1[i], m2[i])){
+				System.out.println("...In Row "+i+".");
+				return false;
+			}
+		}
+		return true;
+	}
 }
