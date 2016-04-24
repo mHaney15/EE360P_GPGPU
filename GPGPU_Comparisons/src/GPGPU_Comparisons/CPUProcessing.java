@@ -29,7 +29,7 @@ public class CPUProcessing {
 		return a;
 	}
 	
-	private static double[][] transpose(double[][] a) {
+	public static double[][] transpose(double[][] a) {
 	    double[][] retval = new double[a.length][a[0].length];
 	    
 	    for (int i = 0 ;i < a.length; i += 1) {

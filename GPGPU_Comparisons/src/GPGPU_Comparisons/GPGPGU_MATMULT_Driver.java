@@ -26,8 +26,8 @@ import org.lwjgl.opencl.CLPlatform;
 import static org.lwjgl.opencl.CL10.*;
 
 public class GPGPGU_MATMULT_Driver {
-	public static final int SIZE = 8;
 	
+	public static final int SIZE = 8;
 	public static CLContext context;
 	public static CLPlatform platform;
 	public static List<CLDevice> devices;
@@ -39,7 +39,6 @@ public class GPGPGU_MATMULT_Driver {
 	
 	public static void main(String[] args){
 		try {
-			
 			long Begin_Full = System.nanoTime();
 			//Read in Kernel file.
 			kernelString = readFile("src/Mat_Mult.cl");
@@ -117,8 +116,6 @@ public class GPGPGU_MATMULT_Driver {
 	        System.out.println("GPU,EXEC:\t" + (End_gpuComp - Begin_gpuComp));
 	        System.out.println("CPU,EXEC:\t" + (End_cpuComp - Begin_cpuComp));
 	        
-	        
-	        
 		} catch (LWJGLException e) {
 			System.err.println("Looks like your system does not support OpenCL. :(");
 			e.printStackTrace();
@@ -126,12 +123,7 @@ public class GPGPGU_MATMULT_Driver {
 			System.err.println("Oh no, there was an issue reading in your kernel!");
 			e.printStackTrace();
 		}
-		
-		
 	}
-	
-	
-	
 	
 	// For simplicity exception handling code is in the method calling this one.
 	public static void initializeCL() throws LWJGLException { 

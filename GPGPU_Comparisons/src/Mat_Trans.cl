@@ -1,8 +1,6 @@
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-kernel void Mat_Trans(global double* answer, global double* Mat, int w) {
+kernel void Mat_Trans(global const double* Mat, global double* answer, int n) {
 	unsigned int i = get_global_id(0);
 	unsigned int j = get_global_id(1);
-	if((i < w)&&(j < w)){
-		answer[i*w + j] = Mat[j*w + i];
-	}
+	answer[i*n + j] = Mat[j*n + i];
 }
