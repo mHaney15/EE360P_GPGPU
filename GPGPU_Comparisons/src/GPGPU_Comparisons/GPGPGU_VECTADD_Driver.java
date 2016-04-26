@@ -26,8 +26,6 @@ import org.lwjgl.opencl.CLPlatform;
 import static org.lwjgl.opencl.CL10.*;
 
 public class GPGPGU_VECTADD_Driver {
-	public static final int SIZE = 64;
-	
 	public static CLContext context;
 	public static CLPlatform platform;
 	public static List<CLDevice> devices;
@@ -35,40 +33,39 @@ public class GPGPGU_VECTADD_Driver {
 	static DoubleBuffer a;
 	static DoubleBuffer b;
 	static DoubleBuffer answer;
-	static IntBuffer n;
 	static String kernelString; 
 	
-	public static void main(String[] args){
+	public static TimeResults run(int SIZE){
+		TimeResults retval = new TimeResults();
 		try {
 			
-			long Begin_Full = System.nanoTime();
+			long Begin_Init = System.nanoTime();
 			//Read in Kernel file.
 			kernelString = readFile("src/Vec_Add.cl");
-			//System.out.println(kernelString);
 			initializeCL();
+			long End_Init = System.nanoTime();
+			
 			//Need to create matrices/vectors here!
+			long Begin_DataTransfer = System.nanoTime();
 			double[] A = RMVG.getRandomVector(SIZE);
 			double[] B = RMVG.getRandomVector(SIZE);
 			a = toDoubleBuffer(A);
 			b = toDoubleBuffer(B);
 			answer = BufferUtils.createDoubleBuffer(a.capacity());
-			n = BufferUtils.createIntBuffer(1);
-			n.put(SIZE);
+			
 			// Allocate memory for our two input buffers and our result buffer
 			CLMem aMem = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, a, null);
 	        clEnqueueWriteBuffer(queue, aMem, 1, 0, a, null, null);
 	        CLMem bMem = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, b, null);
 	        clEnqueueWriteBuffer(queue, bMem, 1, 0, b, null, null);
 	        CLMem answerMem = clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, answer, null);
-	        CLMem nMem = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, n, null);
-	        clEnqueueWriteBuffer(queue, nMem, 1, 0, n, null, null);
 	        clFinish(queue);
 	        
 	        CLProgram program = clCreateProgramWithSource(context, kernelString, null);
-	        //displayInfo();
-	        //clBuildProgram(program, devices.get(0), "", null);
-	        //System.out.println(program.getBuildInfoString(
-	        //devices.get(0), CL_PROGRAM_BUILD_LOG));
+//	        displayInfo();
+//	        clBuildProgram(program, devices.get(0), "", null);
+//	        System.out.println(program.getBuildInfoString(
+//	        devices.get(0), CL_PROGRAM_BUILD_LOG));
 	        Util.checkCLError(clBuildProgram(program, devices.get(0), "", null));
 	        // sum has to match a kernel method name in the OpenCL source
 	        CLKernel kernel = clCreateKernel(program, "Vec_Add", null);
@@ -76,24 +73,25 @@ public class GPGPGU_VECTADD_Driver {
 	        // Execution our kernel
 	        PointerBuffer kernel1DGlobalWorkSize = BufferUtils.createPointerBuffer(1);
 	        kernel1DGlobalWorkSize.put(0, a.capacity());
-	        long Begin_gpuComp = System.nanoTime();
 	        kernel.setArg(0, aMem);
 	        kernel.setArg(1, bMem);
 	        kernel.setArg(2, answerMem);
-	        kernel.setArg(3, nMem);
+	        long Begin_gpuComp = System.nanoTime();
 	        clEnqueueNDRangeKernel(queue, kernel, 1, null, kernel1DGlobalWorkSize, null, null, null);
 	        long End_gpuComp = System.nanoTime();
+	        
 	        // Read the results memory back into our result buffer
 	        clEnqueueReadBuffer(queue, answerMem, 1, 0, answer, null, null);
 	        clFinish(queue);
 	        double[] GPU_Result = RMVG.BufferToArray(answer);
-	     // Clean up OpenCL resources
+	        long End_ResultTransfer = System.nanoTime();
+	        
+	        // Clean up OpenCL resources
 	        clReleaseKernel(kernel);
 	        clReleaseProgram(program);
 	        clReleaseMemObject(aMem);
 	        clReleaseMemObject(bMem);
 	        clReleaseMemObject(answerMem);
-	        clReleaseMemObject(nMem);
 	        clReleaseCommandQueue(queue);
 	        clReleaseContext(context);
 	        CL.destroy();     
@@ -103,20 +101,24 @@ public class GPGPGU_VECTADD_Driver {
 	        double[] CPU_Result = CPUProcessing.vectorAddition(A, B);
 	        long End_cpuComp = System.nanoTime();
 	        
-	        System.out.println("GPU Results:");
-	        System.out.println(Arrays.toString(GPU_Result));
-	        System.out.println("\nCPU_Results:");
-	        System.out.println(Arrays.toString(CPU_Result));
-	        if(RMVG.ResultsEqual(GPU_Result, CPU_Result)){
-	        	System.out.println("They Matched!\n");
-	        }
+//	        System.out.println("GPU Results:");
+//	        System.out.println(Arrays.toString(GPU_Result));
+//	        System.out.println("\nCPU_Results:");
+//	        System.out.println(Arrays.toString(CPU_Result));
+//	        if(RMVG.ResultsEqual(GPU_Result, CPU_Result)){
+//	        	System.out.println("They Matched!\n");
+//	        }
+//	        
+//	        System.out.println("\tTIME COMPARISONS:");
+//	        System.out.println("GPU,FULL:\t" + (End_Full - Begin_Full));
+//	        System.out.println("GPU,EXEC:\t" + (End_gpuComp - Begin_gpuComp));
+//	        System.out.println("CPU,EXEC:\t" + (End_cpuComp - Begin_cpuComp));
 	        
-	        System.out.println("\tTIME COMPARISONS:");
-	        System.out.println("GPU,FULL:\t" + (End_Full - Begin_Full));
-	        System.out.println("GPU,EXEC:\t" + (End_gpuComp - Begin_gpuComp));
-	        System.out.println("CPU,EXEC:\t" + (End_cpuComp - Begin_cpuComp));
-	        
-	        
+	        // Record results
+	        retval.GPU_OpenCL_Overhead = (End_Init - Begin_Init) + (End_gpuComp - End_Full);
+	        retval.GPU_DataTransfer = (Begin_gpuComp - Begin_DataTransfer) + (End_ResultTransfer - End_gpuComp);
+	        retval.GPU_Exec = End_gpuComp - Begin_gpuComp;
+	        retval.CPU_Exec = End_cpuComp - Begin_cpuComp;
 	        
 		} catch (LWJGLException e) {
 			System.err.println("Looks like your system does not support OpenCL. :(");
@@ -126,11 +128,8 @@ public class GPGPGU_VECTADD_Driver {
 			e.printStackTrace();
 		}
 		
-		
+		return retval;
 	}
-	
-	
-	
 	
 	// For simplicity exception handling code is in the method calling this one.
 	public static void initializeCL() throws LWJGLException { 
