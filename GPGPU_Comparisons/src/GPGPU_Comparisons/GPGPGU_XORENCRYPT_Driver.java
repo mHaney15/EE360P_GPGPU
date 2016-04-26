@@ -36,27 +36,27 @@ public class GPGPGU_XORENCRYPT_Driver {
 	static String kernelString; 
 	
 	
-	public static void main(String[] args){
+	public static TimeResults run(){
+		TimeResults retval = new TimeResults();
 		try {
 			
-			System.out.println("Reading In a chapter of Pride and Prejudice...");
+//			System.out.println("Reading In a chapter of Pride and Prejudice...");
 			String chapter = readFile("src/chap01");
-			System.out.println("First 100 Characters:\n"+chapter.substring(0, 100));
-			long Begin_Full = System.nanoTime();
+//			System.out.println("First 100 Characters:\n"+chapter.substring(0, 100));
+			
+			long Begin_Init = System.nanoTime();
 			//Read in Kernel file.
 			kernelString = readFile("src/Encrypt.cl");
-			//System.out.println(kernelString);
 			initializeCL();
-			//Need to create charbuffer here!
+			long End_Init = System.nanoTime();
+			
+			//Need to create ByteBuffer here!
+			long Begin_DataTransfer = System.nanoTime();
 			byte[] bytes = chapter.getBytes();
 			a = BufferUtils.createByteBuffer(bytes.length);
 			for(int i = 0; i < chapter.length(); i += 1) {
 				a.put(bytes[i]);
 			}
-			
-			String s = BufferToString(a);
-			System.out.println(s);
-			
 			answer = BufferUtils.createByteBuffer(a.capacity());
 			
 			// Allocate memory for our two input buffers and our result buffer
@@ -65,10 +65,10 @@ public class GPGPGU_XORENCRYPT_Driver {
 	        CLMem answerMem = clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, answer, null);
 	        clFinish(queue);
 	        CLProgram program = clCreateProgramWithSource(context, kernelString, null);
-	        //displayInfo();
-	        clBuildProgram(program, devices.get(0), "", null);
-	        System.out.println(program.getBuildInfoString(
-	        devices.get(0), CL_PROGRAM_BUILD_LOG));
+//	        displayInfo();
+//	        clBuildProgram(program, devices.get(0), "", null);
+//	        System.out.println(program.getBuildInfoString(
+//	        devices.get(0), CL_PROGRAM_BUILD_LOG));
 	        Util.checkCLError(clBuildProgram(program, devices.get(0), "", null));
 	        // sum has to match a kernel method name in the OpenCL source
 	        CLKernel kernel = clCreateKernel(program, "Encrypt", null);
@@ -76,18 +76,20 @@ public class GPGPGU_XORENCRYPT_Driver {
 	        // Execution our kernel
 	        PointerBuffer kernel1DGlobalWorkSize = BufferUtils.createPointerBuffer(1);
 	        kernel1DGlobalWorkSize.put(0, a.capacity());
-	        
-	        long Begin_gpuComp = System.nanoTime();
 	        kernel.setArg(0, aMem);
 	        kernel.setArg(1, answerMem);
 	        kernel.setArg(2, KEY);
+	        long Begin_gpuComp = System.nanoTime();
 	        clEnqueueNDRangeKernel(queue, kernel, 1, null, kernel1DGlobalWorkSize, null, null, null);
 	        long End_gpuComp = System.nanoTime();
+	        
 	        // Read the results memory back into our result buffer
 	        clEnqueueReadBuffer(queue, answerMem, 1, 0, answer, null, null);
 	        clFinish(queue);
 	        String GPU_Result = BufferToString(answer);
-	     // Clean up OpenCL resources
+	        long End_ResultTransfer = System.nanoTime();
+	        
+	        // Clean up OpenCL resources
 	        clReleaseKernel(kernel);
 	        clReleaseProgram(program);
 	        clReleaseMemObject(aMem);
@@ -96,35 +98,39 @@ public class GPGPGU_XORENCRYPT_Driver {
 	        clReleaseContext(context);
 	        CL.destroy();     
 	        long End_Full = System.nanoTime();
-	        System.out.println("GPU encryption complete, first 100 characteres:");
-	        System.out.println(GPU_Result.substring(0,100));
+	        
+//	        System.out.println("GPU encryption complete, first 100 characteres:");
+//	        System.out.println(GPU_Result.substring(0,100));
+	        
 	        long Begin_cpuComp = System.nanoTime();
-	        String CPU_Result = CPUProcessing.encrypt(GPU_Result, KEY);
-	        String comp = CPUProcessing.encrypt(chapter, KEY);
-	        
-	        if(GPU_Result.equals(comp)){
-	        	System.out.println("YAY");
-	        } else {
-	        	System.out.println("POOP");
-	        }
-	        
+	        String CPU_Result = CPUProcessing.decrypt(GPU_Result, KEY);
 	        long End_cpuComp = System.nanoTime();
-	        System.out.println("CPU decrpytion complete, first 100 characters:");
-	        System.out.println(CPU_Result.substring(0,100));
 	        
-	        if(chapter.equals(CPU_Result)){
-	        	System.out.println("They Matched!\n");
-	        }
-	        else{
-	        	System.out.println("Uh-oh, something went wrong...");
-	        }
+//	        if(GPU_Result.equals(comp)){
+//	        	System.out.println("YAY");
+//	        } else {
+//	        	System.out.println("POOP");
+//	        }
+//	        System.out.println("CPU decrpytion complete, first 100 characters:");
+//	        System.out.println(CPU_Result.substring(0,100));
+//	        
+//	        if(chapter.equals(CPU_Result)){
+//	        	System.out.println("They Matched!\n");
+//	        }
+//	        else{
+//	        	System.out.println("Uh-oh, something went wrong...");
+//	        }
 	        
-	        System.out.println("\tTIME COMPARISONS:\n");
-	        System.out.println("GPU,FULL:\t" + (End_Full - Begin_Full));
-	        System.out.println("GPU,EXEC:\t" + (End_gpuComp - Begin_gpuComp));
-	        System.out.println("CPU,EXEC:\t" + (End_cpuComp - Begin_cpuComp));
+//	        System.out.println("\tTIME COMPARISONS:\n");
+//	        System.out.println("GPU,FULL:\t" + (End_Full - Begin_Full));
+//	        System.out.println("GPU,EXEC:\t" + (End_gpuComp - Begin_gpuComp));
+//	        System.out.println("CPU,EXEC:\t" + (End_cpuComp - Begin_cpuComp));
 	        
-	        
+	        // Record results
+	        retval.GPU_OpenCL_Overhead = (End_Init - Begin_Init) + (End_gpuComp - End_Full);
+	        retval.GPU_DataTransfer = (Begin_gpuComp - Begin_DataTransfer) + (End_ResultTransfer - End_gpuComp);
+	        retval.GPU_Exec = End_gpuComp - Begin_gpuComp;
+	        retval.CPU_Exec = End_cpuComp - Begin_cpuComp;
 	        
 		} catch (LWJGLException e) {
 			System.err.println("Looks like your system does not support OpenCL. :(");
@@ -134,7 +140,7 @@ public class GPGPGU_XORENCRYPT_Driver {
 			e.printStackTrace();
 		}
 		
-		
+		return retval;
 	}
 	
 	// For simplicity exception handling code is in the method calling this one.
