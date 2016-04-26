@@ -12,6 +12,7 @@ public class Driver {
 	public static void main(String[] args) {
 		HashMap<Integer, TimeResults> vector_add_results = new HashMap<Integer, TimeResults>();
 		HashMap<Integer, TimeResults> matrix_mult_results = new HashMap<Integer, TimeResults>(); 
+		HashMap<Integer, TimeResults> matrix_transpose_results = new HashMap<Integer, TimeResults>();
 		
 		for (int size = 32; size <= MAX_VECTOR_SIZE; size *= 2) {
 			TimeResults avg = new TimeResults();
@@ -41,6 +42,21 @@ public class Driver {
 		
 		System.out.println("----MATRIX MULTIPLICATION PERFORMANCE----");
 		printResults(matrix_mult_results);
+		System.out.println("------------------------------\n");
+		
+		for (int size = 32; size <= MAX_MATRIX_SIZE; size *= 2) {
+			TimeResults avg = new TimeResults();
+			for (int i = 0; i < NUM_ITERATIONS; i += 1) {
+				TimeResults result = GPGPGU_MATTRANS_Driver.run(size);
+				avg.add(result);
+			}
+			
+			avg.divideAll(NUM_ITERATIONS);
+			matrix_transpose_results.put(size, avg);
+		}
+		
+		System.out.println("----MATRIX TRANSPOSE PERFORMANCE----");
+		printResults(matrix_transpose_results);
 		System.out.println("------------------------------\n");
 	}
 	

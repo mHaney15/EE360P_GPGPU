@@ -40,6 +40,13 @@ public class GPGPGU_MATMULT_Driver {
 		TimeResults retval = new TimeResults();
 		try {
 			
+			double[][] A = RMVG.getRandomMatrix(SIZE);
+			double[][] B = RMVG.getRandomMatrix(SIZE);
+//			System.out.println("Matrix A:");
+//			printMatrix(A);
+//			System.out.println("\nMatrix B:");
+//			printMatrix(B);
+			
 			long Begin_Init = System.nanoTime();
 			//Read in Kernel file.
 			kernelString = readFile("src/Mat_Mult.cl");
@@ -48,13 +55,6 @@ public class GPGPGU_MATMULT_Driver {
 			
 			//Need to create matrices/vectors here!
 			long Begin_DataTransfer = System.nanoTime();
-			double[][] A = RMVG.getRandomMatrix(SIZE);
-			double[][] B = RMVG.getRandomMatrix(SIZE);
-			
-//			System.out.println("Matrix A:");
-//			printMatrix(A);
-//			System.out.println("\nMatrix B:");
-//			printMatrix(B);
 			a = toDoubleBuffer(A);
 			b = toDoubleBuffer(B);
 			answer = BufferUtils.createDoubleBuffer(a.capacity());

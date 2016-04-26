@@ -39,6 +39,9 @@ public class GPGPGU_VECTADD_Driver {
 		TimeResults retval = new TimeResults();
 		try {
 			
+			double[] A = RMVG.getRandomVector(SIZE);
+			double[] B = RMVG.getRandomVector(SIZE);
+			
 			long Begin_Init = System.nanoTime();
 			//Read in Kernel file.
 			kernelString = readFile("src/Vec_Add.cl");
@@ -47,8 +50,6 @@ public class GPGPGU_VECTADD_Driver {
 			
 			//Need to create matrices/vectors here!
 			long Begin_DataTransfer = System.nanoTime();
-			double[] A = RMVG.getRandomVector(SIZE);
-			double[] B = RMVG.getRandomVector(SIZE);
 			a = toDoubleBuffer(A);
 			b = toDoubleBuffer(B);
 			answer = BufferUtils.createDoubleBuffer(a.capacity());

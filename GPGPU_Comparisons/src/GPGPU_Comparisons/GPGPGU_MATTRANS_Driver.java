@@ -26,8 +26,6 @@ import org.lwjgl.opencl.CLPlatform;
 import static org.lwjgl.opencl.CL10.*;
 
 public class GPGPGU_MATTRANS_Driver {
-	public static final int SIZE = 4096;
-	
 	public static CLContext context;
 	public static CLPlatform platform;
 	public static List<CLDevice> devices;
@@ -36,30 +34,34 @@ public class GPGPGU_MATTRANS_Driver {
 	static DoubleBuffer answer;
 	static String kernelString; 
 	
-	public static void main(String[] args){
+	public static TimeResults run(int SIZE){
+		TimeResults retval = new TimeResults();
 		try {
 			
-			System.out.println("Creating random matrix A...");
+//			System.out.println("Creating random matrix A...");
 			double[][] A = RMVG.getRandomMatrix(SIZE);
 			
-			long Begin_Full = System.nanoTime();
+			long Begin_Init = System.nanoTime();
 			//Read in Kernel file.
 			kernelString = readFile("src/Mat_Trans.cl");
-			//System.out.println(kernelString);
 			initializeCL();
+			long End_Init = System.nanoTime();
+			
 			//Need to create matrices/vectors here!
-						a = toDoubleBuffer(A);
+			long Begin_DataTransfer = System.nanoTime();
+			a = toDoubleBuffer(A);
 			answer = BufferUtils.createDoubleBuffer(a.capacity());
+			
 			// Allocate memory for our two input buffers and our result buffer
 			CLMem aMem = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, a, null);
 	        clEnqueueWriteBuffer(queue, aMem, 1, 0, a, null, null);
 	        CLMem answerMem = clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, answer, null);
 	        clFinish(queue);
 	        CLProgram program = clCreateProgramWithSource(context, kernelString, null);
-	        //displayInfo();
-	        clBuildProgram(program, devices.get(0), "", null);
-	        System.out.println(program.getBuildInfoString(
-	        devices.get(0), CL_PROGRAM_BUILD_LOG));
+//	        displayInfo();
+//	        clBuildProgram(program, devices.get(0), "", null);
+//	        System.out.println(program.getBuildInfoString(
+//	        devices.get(0), CL_PROGRAM_BUILD_LOG));
 	        Util.checkCLError(clBuildProgram(program, devices.get(0), "", null));
 	        // sum has to match a kernel method name in the OpenCL source
 	        CLKernel kernel = clCreateKernel(program, "Mat_Trans", null);
@@ -68,18 +70,20 @@ public class GPGPGU_MATTRANS_Driver {
 	        PointerBuffer kernel2DGlobalWorkSize = BufferUtils.createPointerBuffer(2);
 	        kernel2DGlobalWorkSize.put(0, SIZE);
 	        kernel2DGlobalWorkSize.put(1, SIZE);
-	        
-	        long Begin_gpuComp = System.nanoTime();
 	        kernel.setArg(0, aMem);
 	        kernel.setArg(1, answerMem);
 	        kernel.setArg(2, SIZE);
+	        long Begin_gpuComp = System.nanoTime();
 	        clEnqueueNDRangeKernel(queue, kernel, 2, null, kernel2DGlobalWorkSize, null, null, null);
 	        long End_gpuComp = System.nanoTime();
+	        
 	        // Read the results memory back into our result buffer
 	        clEnqueueReadBuffer(queue, answerMem, 1, 0, answer, null, null);
 	        clFinish(queue);
 	        double[][] GPU_Result = RMVG.BufferToMatrix(answer, SIZE);
-	     // Clean up OpenCL resources
+	        long End_ResultTransfer = System.nanoTime();
+	        
+   	        // Clean up OpenCL resources
 	        clReleaseKernel(kernel);
 	        clReleaseProgram(program);
 	        clReleaseMemObject(aMem);
@@ -88,23 +92,28 @@ public class GPGPGU_MATTRANS_Driver {
 	        clReleaseContext(context);
 	        CL.destroy();     
 	        long End_Full = System.nanoTime();
-	        System.out.println("GPU computation complete.");
+//	        System.out.println("GPU computation complete.");
 	        
 	        long Begin_cpuComp = System.nanoTime();
 	        double[][] CPU_Result = CPUProcessing.transpose(A);
 	        long End_cpuComp = System.nanoTime();
-	        System.out.println("CPU computation complete.");
 	        
-	        if(RMVG.ResultsEqual(GPU_Result, CPU_Result)){
-	        	System.out.println("They Matched!\n");
-	        }
+//	        System.out.println("CPU computation complete.");
+//	        
+//	        if(RMVG.ResultsEqual(GPU_Result, CPU_Result)){
+//	        	System.out.println("They Matched!\n");
+//	        }
+//	        
+//	        System.out.println("\tTIME COMPARISONS:\n");
+//	        System.out.println("GPU,FULL:\t" + (End_Full - Begin_Full));
+//	        System.out.println("GPU,EXEC:\t" + (End_gpuComp - Begin_gpuComp));
+//	        System.out.println("CPU,EXEC:\t" + (End_cpuComp - Begin_cpuComp));
 	        
-	        System.out.println("\tTIME COMPARISONS:\n");
-	        System.out.println("GPU,FULL:\t" + (End_Full - Begin_Full));
-	        System.out.println("GPU,EXEC:\t" + (End_gpuComp - Begin_gpuComp));
-	        System.out.println("CPU,EXEC:\t" + (End_cpuComp - Begin_cpuComp));
-	        
-	        
+	        // Record results
+	        retval.GPU_OpenCL_Overhead = (End_Init - Begin_Init) + (End_gpuComp - End_Full);
+	        retval.GPU_DataTransfer = (Begin_gpuComp - Begin_DataTransfer) + (End_ResultTransfer - End_gpuComp);
+	        retval.GPU_Exec = End_gpuComp - Begin_gpuComp;
+	        retval.CPU_Exec = End_cpuComp - Begin_cpuComp;
 	        
 		} catch (LWJGLException e) {
 			System.err.println("Looks like your system does not support OpenCL. :(");
@@ -114,7 +123,7 @@ public class GPGPGU_MATTRANS_Driver {
 			e.printStackTrace();
 		}
 		
-		
+		return retval;
 	}
 	
 	
