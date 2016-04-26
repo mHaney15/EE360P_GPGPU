@@ -7,13 +7,11 @@ public class Driver {
 
 	private final static int NUM_ITERATIONS = 100;
 	private final static int MAX_VECTOR_SIZE = 4096;
+	private final static int MAX_MATRIX_SIZE = 1024;
 	
 	public static void main(String[] args) {
-		testVectorAdd();
-	}
-	
-	private static void testVectorAdd() {
 		HashMap<Integer, TimeResults> vector_add_results = new HashMap<Integer, TimeResults>();
+		HashMap<Integer, TimeResults> matrix_mult_results = new HashMap<Integer, TimeResults>(); 
 		
 		for (int size = 32; size <= MAX_VECTOR_SIZE; size *= 2) {
 			TimeResults avg = new TimeResults();
@@ -27,7 +25,27 @@ public class Driver {
 		}
 		
 		System.out.println("----VECTOR ADD PERFORMANCE----");
-		for(Map.Entry entry : vector_add_results.entrySet()) {
+		printResults(vector_add_results);
+		System.out.println("------------------------------\n");
+		
+		for (int size = 32; size <= MAX_MATRIX_SIZE; size *= 2) {
+			TimeResults avg = new TimeResults();
+			for (int i = 0; i < NUM_ITERATIONS; i += 1) {
+				TimeResults result = GPGPGU_MATMULT_Driver.run(size);
+				avg.add(result);
+			}
+			
+			avg.divideAll(NUM_ITERATIONS);
+			matrix_mult_results.put(size, avg);
+		}
+		
+		System.out.println("----MATRIX MULTIPLICATION PERFORMANCE----");
+		printResults(matrix_mult_results);
+		System.out.println("------------------------------\n");
+	}
+	
+	private static void printResults(HashMap<Integer, TimeResults> map) {
+		for(Map.Entry entry : map.entrySet()) {
 			TimeResults tr = (TimeResults) entry.getValue();
 			System.out.println("<size = " + entry.getKey() +">");
 			System.out.println("\tGPU OpenCL Overhead: " + tr.GPU_OpenCL_Overhead);
@@ -35,6 +53,5 @@ public class Driver {
 			System.out.println("\tGPU Exec: " + tr.GPU_Exec);
 			System.out.println("\tCPU Exec: " + tr.CPU_Exec);
 		}
-		System.out.println("----VECTOR ADD PERFORMANCE----");
 	}
 }
