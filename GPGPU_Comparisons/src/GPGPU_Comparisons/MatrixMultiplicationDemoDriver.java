@@ -1,5 +1,5 @@
 package GPGPU_Comparisons;
-
+//DEMO PURPOSE ONLY!
 import org.lwjgl.opencl.Util;
 import org.lwjgl.opencl.CLMem;
 import org.lwjgl.opencl.CLCommandQueue;
@@ -8,7 +8,6 @@ import org.lwjgl.LWJGLException;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opencl.CLProgram;
 import org.lwjgl.opencl.CLKernel;
-
 import java.io.IOException;
 import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
@@ -17,7 +16,6 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-
 import org.lwjgl.opencl.CL;
 import org.lwjgl.opencl.CL10;
 import org.lwjgl.opencl.CLContext;
@@ -25,76 +23,63 @@ import org.lwjgl.opencl.CLDevice;
 import org.lwjgl.opencl.CLPlatform;
 import static org.lwjgl.opencl.CL10.*;
 
-public class GPGPGU_MATMULT_Driver {
+public class MatrixMultiplicationDemoDriver {
 	
-	public static CLContext context;
-	public static CLPlatform platform;
-	public static List<CLDevice> devices;
-	public static CLCommandQueue queue;
-	static DoubleBuffer a;
-	static DoubleBuffer b;
-	static DoubleBuffer answer;
-	static String kernelString;
-	
-	public static TimeResults run(int SIZE){
-		TimeResults retval = new TimeResults();
+	static double[][] run(double[][] A, double[][] B){
+		
+		double[][]GPU_Result = null;
 		try {
+			long startSetup = System.nanoTime();
+			int SIZE = A.length;
 			
-			double[][] A = RMVG.getRandomMatrix(SIZE);
-			double[][] B = RMVG.getRandomMatrix(SIZE);
-//			System.out.println("Matrix A:");
-//			printMatrix(A);
-//			System.out.println("\nMatrix B:");
-//			printMatrix(B);
+			//Convert Java Objects to Buffers, and allocate a buffer for receiving the answer.
+			DoubleBuffer a = toDoubleBuffer(A); 
+			DoubleBuffer b = toDoubleBuffer(B);
+			DoubleBuffer answer = BufferUtils.createDoubleBuffer(a.capacity());
 			
-			long Begin_Init = System.nanoTime();
-			//Read in Kernel file.
-			kernelString = readFile("src/Mat_Mult.cl");
-			initializeCL();
-			long End_Init = System.nanoTime();
+			//Read in the OpenCL kernel as a string
+			String kernelString = readFile("src/Mat_Mult.cl");
 			
-			//Need to create matrices/vectors here!
-			long Begin_DataTransfer = System.nanoTime();
-			a = toDoubleBuffer(A);
-			b = toDoubleBuffer(B);
-			answer = BufferUtils.createDoubleBuffer(a.capacity());
+			// Initialize OpenCL and create a context and command queue
+			IntBuffer errorBuff = BufferUtils.createIntBuffer(1);
+			CL.create();
+			CLPlatform platform = CLPlatform.getPlatforms().get(1); //<- for me, platform 1 is NVIDIA 
+			List<CLDevice> devices = platform.getDevices(CL10.CL_DEVICE_TYPE_GPU); 
+			CLContext context = CLContext.create(platform, devices, errorBuff);
+			CLCommandQueue queue = CL10.clCreateCommandQueue(context, devices.get(0), //<-Device 1 is my 940m
+								   CL10.CL_QUEUE_PROFILING_ENABLE, errorBuff);
+			Util.checkCLError(errorBuff.get(0));
 			
-			// Allocate memory for our two input buffers and our result buffer
+			// Allocate memory for our two input buffers and our result buffer in actual memory
 			CLMem aMem = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, a, null);
 	        clEnqueueWriteBuffer(queue, aMem, 1, 0, a, null, null);
 	        CLMem bMem = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, b, null);
 	        clEnqueueWriteBuffer(queue, bMem, 1, 0, b, null, null);
 	        CLMem answerMem = clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, answer, null);
-	        clFinish(queue);
-	        
+	        clFinish(queue);	        
 	        CLProgram program = clCreateProgramWithSource(context, kernelString, null);
-//	        displayInfo();
-//	        clBuildProgram(program, devices.get(0), "", null);
-//	        System.out.println(program.getBuildInfoString(
-//	        devices.get(0), CL_PROGRAM_BUILD_LOG));
 	        Util.checkCLError(clBuildProgram(program, devices.get(0), "", null));
-	        // sum has to match a kernel method name in the OpenCL source
-	        CLKernel kernel = clCreateKernel(program, "Mat_Mult", null);
+	        CLKernel kernel = clCreateKernel(program, "Mat_Mult", null); //<- the name of our kernel function.
 	 
 	        // Execution our kernel
+	        //Create a 2D workspace (You can also use 1 or 3D!)
 	        PointerBuffer kernel2DGlobalWorkSize = BufferUtils.createPointerBuffer(2);
-	        kernel2DGlobalWorkSize.put(0, SIZE);
+	        kernel2DGlobalWorkSize.put(0, SIZE); //We want a SIZExSIZE workspace
 	        kernel2DGlobalWorkSize.put(1, SIZE);
-	        kernel.setArg(0, aMem);
+	        kernel.setArg(0, aMem);				//Add pointers and primitive size as kernel args
 	        kernel.setArg(1, bMem);
 	        kernel.setArg(2, answerMem);
 	        kernel.setArg(3, SIZE);
-	        long Begin_gpuComp = System.nanoTime();
+	        long startGPUExecution = System.nanoTime();
 	        clEnqueueNDRangeKernel(queue, kernel, 2, null, kernel2DGlobalWorkSize, null, null, null);
-	        long End_gpuComp = System.nanoTime();
+	        long endGPUExecution = System.nanoTime();
 	        
 	        // Read the results memory back into our result buffer
 	        clEnqueueReadBuffer(queue, answerMem, 1, 0, answer, null, null);
 	        clFinish(queue);
-	        double[][] GPU_Result = RMVG.BufferToMatrix(answer, SIZE);
-	        long End_ResultTransfer = System.nanoTime();
+	        GPU_Result = RMVG.BufferToMatrix(answer, SIZE);
 	        
-	        // Clean up OpenCL resources
+	     // Clean up OpenCL resources
 	        clReleaseKernel(kernel);
 	        clReleaseProgram(program);
 	        clReleaseMemObject(aMem);
@@ -103,31 +88,16 @@ public class GPGPGU_MATMULT_Driver {
 	        clReleaseCommandQueue(queue);
 	        clReleaseContext(context);
 	        CL.destroy();     
-	        long End_Full = System.nanoTime();
+	        long EndConversion = System.nanoTime();
+	        if(SIZE > 1000){
+	        	DemoDriver.GPU_RT = EndConversion - startSetup;
+	        	DemoDriver.GPU_ET = endGPUExecution - startGPUExecution;
+	        	
+	        }
 	        
-	        long Begin_cpuComp = System.nanoTime();
-	        double[][] CPU_Result = CPUProcessing.matrixMultiplication(A, B);
-	        long End_cpuComp = System.nanoTime();
+	        return GPU_Result;
+	             
 	        
-//	        System.out.println("GPU Results:");
-//	        printMatrix(GPU_Result);
-//	        System.out.println("\nCPU_Results:");
-//	        printMatrix(CPU_Result);
-//	        if(RMVG.ResultsEqual(GPU_Result, CPU_Result)){
-//	        	System.out.println("They Matched!\n");
-//	        }
-//	        
-//	        System.out.println("\tTIME COMPARISONS:");
-//	        System.out.println("GPU,FULL:\t" + (End_Full - Begin_Full));
-//	        System.out.println("GPU,EXEC:\t" + (End_gpuComp - Begin_gpuComp));
-//	        System.out.println("CPU,EXEC:\t" + (End_cpuComp - Begin_cpuComp));
-	        
-	        // Record results
-	        retval.GPU_OpenCL_Overhead = (End_Init - Begin_Init) + (End_gpuComp - End_Full);
-	        retval.GPU_DataTransfer = (Begin_gpuComp - Begin_DataTransfer) + (End_ResultTransfer - End_gpuComp);
-	        retval.GPU_Exec = End_gpuComp - Begin_gpuComp;
-	        retval.CPU_Exec = End_cpuComp - Begin_cpuComp;
-	     
 		} catch (LWJGLException e) {
 			System.err.println("Looks like your system does not support OpenCL. :(");
 			e.printStackTrace();
@@ -135,20 +105,8 @@ public class GPGPGU_MATMULT_Driver {
 			System.err.println("Oh no, there was an issue reading in your kernel!");
 			e.printStackTrace();
 		}
-		
-		return retval;
+		finally{return GPU_Result;}
 	}
-	
-	// For simplicity exception handling code is in the method calling this one.
-	public static void initializeCL() throws LWJGLException { 
-		IntBuffer errorBuff = BufferUtils.createIntBuffer(1);
-		CL.create();
-		platform = CLPlatform.getPlatforms().get(1); 
-		devices = platform.getDevices(CL10.CL_DEVICE_TYPE_GPU);
-		context = CLContext.create(platform, devices, errorBuff);
-		queue = CL10.clCreateCommandQueue(context, devices.get(0), CL10.CL_QUEUE_PROFILING_ENABLE, errorBuff);
-		Util.checkCLError(errorBuff.get(0)); 
-	}	
 	
 	/** Utility method to convert double array to double buffer
      * @param doubles - the double array to convert

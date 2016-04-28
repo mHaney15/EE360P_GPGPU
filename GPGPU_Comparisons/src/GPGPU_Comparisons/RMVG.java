@@ -43,7 +43,11 @@ public class RMVG {
 	public static boolean ResultsEqual(double[] a1, double[] a2){
 		if(a1.length != a2.length){return false;}
 		for(int i = 0; i < a1.length; i++){
-			if(a1[i] != a2[i]){
+			if(a1[i] > (a2[i]+ a2[i]*0.0000000001)){
+				System.out.println("Element number "+i+" in the results differed by "+Math.abs(a1[i]-a2[i])+"!");
+				return false;
+			}
+			if(a1[i] < (a2[i] - a2[i]*0.0000000001)){
 				System.out.println("Element number "+i+" in the results differed by "+Math.abs(a1[i]-a2[i])+"!");
 				return false;
 			}
